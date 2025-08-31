@@ -13,7 +13,7 @@ from .utils import Coordinate, Route, total_distance, random_solution, two_opt_s
 
 
 def acceptance_probability(delta: float, temperature: float) -> float:
-    """Probabilidade de aceitar uma solução pior (Metropolis)."""
+    """Probabilidade de aceitar uma solução pior."""
     if delta <= 0:
         return 1.0
     return math.exp(-delta / temperature)
