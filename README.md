@@ -1,6 +1,6 @@
-## Como rodar
+## Tutorial
 
-Use Python 3.8+ e execute o script `tsp.py` a partir da raiz do repositório.
+Execute o script `tsp.py` a partir da raiz do repositório.
 
 Exemplo mínimo (SA):
 
