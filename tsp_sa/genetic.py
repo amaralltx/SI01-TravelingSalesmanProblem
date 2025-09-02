@@ -1,119 +1,125 @@
-"""Algoritmo Genético simples para TSP.
-
-Permutação, torneio, Order Crossover (OX), swap mutation.
-"""
+"""Algoritmo Genético para TSP."""
 
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
-from .utils import Coordinate, Route, total_distance, random_solution
-
-
-def tournament_selection(population: List[Route], costs: List[float], k: int = 3) -> Route:
-    """Seleciona por torneio e retorna uma cópia do vencedor."""
-    best = None
-    best_cost = float("inf")
-    for _ in range(k):
-        i = random.randrange(len(population))
-        if costs[i] < best_cost:
-            best = population[i]
-            best_cost = costs[i]
-    return best[:]
+from .utils import distancia_total, random_solution
 
 
-def order_crossover(parent1: Route, parent2: Route) -> Route:
-    """Order Crossover (OX) robusto para permutações."""
-    n = len(parent1)
-    a = random.randrange(0, n - 1)
-    b = random.randrange(a + 1, n)
-    child = [-1] * n
-    child[a:b] = parent1[a:b]
-
-    # Preencher as posições vazias na ordem de parent2
-    fill_pos = b % n
-    for gene in parent2:
-        if gene not in child:
-            child[fill_pos] = gene
-            fill_pos = (fill_pos + 1) % n
-
-    return child
+def torneio_selecao(populacao: List[List[int]], custos: List[float], k: int) -> List[int]:
+    """Seleciona um indivíduo por torneio de tamanho k."""
+    selecionados = random.sample(range(len(populacao)), k)
+    selecionado = min(selecionados, key=lambda i: custos[i])
+    return populacao[selecionado][:]
 
 
-def swap_mutation(route: Route, mutation_rate: float = 0.02) -> Route:
-    """Mutação por troca simples; probabilidade por posição."""
-    r = route[:]
-    n = len(r)
+def cruzamento_ox(pai1: List[int], pai2: List[int]) -> Tuple[List[int], List[int]]:
+    """Order Crossover (OX). Retorna dois filhos."""
+    n = len(pai1)
+    a, b = sorted(random.sample(range(n), 2))
+
+    def ox(p_a, p_b):
+        filho = [-1] * n
+        # copia o segmento do pai A
+        filho[a : b + 1] = p_a[a : b + 1]
+        # preenche com a ordem do pai B
+        pos = (b + 1) % n
+        for gene in p_b[b + 1 :] + p_b[: b + 1]:
+            if gene not in filho:
+                filho[pos] = gene
+                pos = (pos + 1) % n
+        return filho
+
+    return ox(pai1, pai2), ox(pai2, pai1)
+
+
+def mutacao_swap(individuo: List[int], taxa_mutacao: float) -> None:
+    """Aplica mutação por swap no indivíduo in-place com probabilidade taxa_mutacao por par."""
+    n = len(individuo)
     for i in range(n):
-        if random.random() < mutation_rate:
+        if random.random() < taxa_mutacao:
             j = random.randrange(n)
-            r[i], r[j] = r[j], r[i]
-    return r
+            individuo[i], individuo[j] = individuo[j], individuo[i]
+
+
+def avaliar_populacao(populacao: List[List[int]], coords) -> List[float]:
+    return [distancia_total(ind, coords) for ind in populacao]
 
 
 def genetic_algorithm(
-    coords: List[Coordinate],
-    pop_size: int = 100,
-    generations: int = 500,
-    crossover_rate: float = 0.9,
-    mutation_rate: float = 0.02,
-    elitism: int = 1,
-    seed: int = None,
-) -> Tuple[Route, float, dict]:
-    """Executa o GA e retorna (best_route, best_cost, info)."""
-    if seed is not None:
-        random.seed(seed)
+    coords,
+    tamanho_populacao: int = 100,
+    geracoes: int = 500,
+    taxa_crossover: float = 0.9,
+    taxa_mutacao: float = 0.02,
+    elitismo: int = 1,
+    torneio_k: int = 3,
+    semente: int | None = None,
+) -> Tuple[List[int], float, Dict]:
+    """Executa o algoritmo genético e retorna o melhor indivíduo encontrado.
 
-    n = len(coords)
-    if n == 0:
-        return [], 0.0, {"generations": 0}
+    Parâmetros:
+    - coords: lista de coordenadas (x,y) das cidades (mesmo formato que utils espera)
+    - tamanho_populacao: tamanho da população
+    - geracoes: número de gerações a evoluir
+    - taxa_crossover: probabilidade de aplicar cruzamento
+    - taxa_mutacao: probabilidade de mutação por gene
+    - elitismo: quantos melhores passam diretamente para a próxima geração
+    - torneio_k: tamanho do torneio para seleção
+    - semente: semente opcional para reprodutibilidade
+    """
+    if semente is not None:
+        random.seed(semente)
 
-    population = [random_solution(n) for _ in range(pop_size)]
-    costs = [total_distance(p, coords) for p in population]
+    n_cidades = len(coords)
+    # inicializa população com permutações aleatórias
+    populacao = [random_solution(n_cidades) for _ in range(tamanho_populacao)]
+    custos = avaliar_populacao(populacao, coords)
 
-    best_idx = min(range(pop_size), key=lambda i: costs[i])
-    best = population[best_idx][:]
-    best_cost = costs[best_idx]
+    melhor_idx = min(range(len(custos)), key=lambda i: custos[i])
+    melhor_individuo = populacao[melhor_idx][:]
+    melhor_custo = custos[melhor_idx]
 
-    history = {"best_costs": [], "avg_costs": []}
+    historico_melhor_custo = [melhor_custo]
 
-    for gen in range(generations):
-        new_pop = []
-        # Elitism: mantém os melhores
-        elite_idxs = sorted(range(pop_size), key=lambda i: costs[i])[:elitism]
-        for i in elite_idxs:
-            new_pop.append(population[i][:])
+    for gen in range(1, geracoes + 1):
+        nova_populacao: List[List[int]] = []
 
-        while len(new_pop) < pop_size:
-            p1 = tournament_selection(population, costs)
-            p2 = tournament_selection(population, costs)
-            if random.random() < crossover_rate:
-                child = order_crossover(p1, p2)
+        # elitismo: copia os N melhores
+        ordenados = sorted(zip(populacao, custos), key=lambda pc: pc[1])
+        for i in range(min(elitismo, len(ordenados))):
+            nova_populacao.append(ordenados[i][0][:])
+
+        # gera novos individuos
+        while len(nova_populacao) < tamanho_populacao:
+            # seleção
+            pai1 = torneio_selecao(populacao, custos, torneio_k)
+            pai2 = torneio_selecao(populacao, custos, torneio_k)
+
+            # cruzamento
+            if random.random() < taxa_crossover:
+                filho1, filho2 = cruzamento_ox(pai1, pai2)
             else:
-                child = p1[:]
-            child = swap_mutation(child, mutation_rate)
-            new_pop.append(child)
+                filho1, filho2 = pai1[:], pai2[:]
 
-        population = new_pop
-        costs = [total_distance(p, coords) for p in population]
+            # mutação
+            mutacao_swap(filho1, taxa_mutacao)
+            mutacao_swap(filho2, taxa_mutacao)
 
-        # Atualiza melhor
-        gen_best_idx = min(range(pop_size), key=lambda i: costs[i])
-        gen_best_cost = costs[gen_best_idx]
-        if gen_best_cost < best_cost:
-            best_cost = gen_best_cost
-            best = population[gen_best_idx][:]
+            nova_populacao.append(filho1)
+            if len(nova_populacao) < tamanho_populacao:
+                nova_populacao.append(filho2)
 
-        history["best_costs"].append(best_cost)
-        history["avg_costs"].append(sum(costs) / len(costs))
+        populacao = nova_populacao
+        custos = avaliar_populacao(populacao, coords)
 
-    info = {"generations": generations, "best_cost_history_len": len(history["best_costs"]) }
-    return best, best_cost, {**info, **history}
+        # atualiza melhor
+        idx = min(range(len(custos)), key=lambda i: custos[i])
+        if custos[idx] < melhor_custo:
+            melhor_custo = custos[idx]
+            melhor_individuo = populacao[idx][:]
 
+        historico_melhor_custo.append(melhor_custo)
 
-if __name__ == '__main__':
-    # Exemplo rápido quando executado isoladamente
-    import random as _r
-    _r.seed(0)
-    coords = [(0, 0), (1, 0), (1, 1), (0, 1)]
-    best, cost, info = genetic_algorithm(coords, pop_size=30, generations=100, seed=0)
-    print("best", best, cost)
+    info = {"geracoes": geracoes, "historico_melhor_custo": historico_melhor_custo}
+    return melhor_individuo, melhor_custo, info

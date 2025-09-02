@@ -8,32 +8,32 @@ import math
 import random
 from typing import List, Tuple
 
-Coordinate = Tuple[float, float]
-Route = List[int]
+Coordenada = Tuple[float, float]
+Rota = List[int]
 
 
-def euclidean_distance(a: Coordinate, b: Coordinate) -> float:
+def distancia_euclidiana(a: Coordenada, b: Coordenada) -> float:
     """Retorna a distância Euclidiana entre dois pontos (x, y)."""
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
 
-def total_distance(route: Route, coords: List[Coordinate]) -> float:
+def distancia_total(route: Rota, coords: List[Coordenada]) -> float:
     """Calcula o custo total de uma rota (ciclo que retorna ao início)."""
     dist = 0.0
     n = len(route)
     for i in range(n):
         a = coords[route[i]]
         b = coords[route[(i + 1) % n]]
-        dist += euclidean_distance(a, b)
+        dist += distancia_euclidiana(a, b)
     return dist
 
 
-def two_opt_swap(route: Route, i: int, k: int) -> Route:
+def two_opt_swap(route: Rota, i: int, k: int) -> Rota:
     """Opera 2-opt: retorna uma nova rota com segmento [i..k] invertido."""
     return route[:i] + list(reversed(route[i:k + 1])) + route[k + 1:]
 
 
-def random_solution(n: int) -> Route:
+def random_solution(n: int) -> Rota:
     """Gera uma permutação aleatória de n índices (rota inicial)."""
     route = list(range(n))
     random.shuffle(route)

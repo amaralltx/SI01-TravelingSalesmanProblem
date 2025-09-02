@@ -1,19 +1,14 @@
-"""
-Exporta funções úteis para uso externo.
-"""
-
-from .utils import euclidean_distance, total_distance, two_opt_swap, random_solution, Coordinate, Route
-from .annealing import simulated_annealing, acceptance_probability
+from .utils import distancia_total, two_opt_swap, random_solution, Coordenada, Rota
+from .annealing import simulated_annealing, probabilidade_aceitacao
 from .genetic import genetic_algorithm
 
 __all__ = [
-    "euclidean_distance",
-    "total_distance",
+    "distancia_total",
     "two_opt_swap",
     "random_solution",
     "simulated_annealing",
-    "acceptance_probability",
+    "probabilidade_aceitacao",
     "genetic_algorithm",
-    "Coordinate",
-    "Route",
+    "Coordenada",
+    "Rota",
 ]
