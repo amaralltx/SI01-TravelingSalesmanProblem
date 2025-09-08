@@ -5,7 +5,7 @@ from tsp_sa import simulated_annealing, genetic_algorithm
 
 
 def main(
-    # Parâmetros Gerais
+    # Parâmetros Gerais Iniciais
     n_cidades: int = 25,
     semente: int = 123,
     metodo: str = 'sa',

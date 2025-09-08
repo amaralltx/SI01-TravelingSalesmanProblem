@@ -3,7 +3,7 @@
 import random
 from typing import List, Tuple, Dict
 
-from .utils import distancia_total, random_solution
+from .utils import distancia_total, random_solution, two_opt_swap
 
 
 def torneio_selecao(populacao: List[List[int]], custos: List[float], k: int) -> List[int]:
@@ -33,13 +33,19 @@ def cruzamento_ox(pai1: List[int], pai2: List[int]) -> Tuple[List[int], List[int
     return ox(pai1, pai2), ox(pai2, pai1)
 
 
-def mutacao_swap(individuo: List[int], taxa_mutacao: float) -> None:
-    """Aplica mutação por swap no indivíduo in-place com probabilidade taxa_mutacao por par."""
+def mutacao_2opt(individuo: List[int], taxa_mutacao: float) -> None:
+    """Aplica um único 2-opt (inversão de segmento) no indivíduo com probabilidade taxa_mutacao.
+
+    Estratégia: percorre e com probabilidade taxa_mutacao aplica one-shot two_opt_swap escolhendo i<k aleatórios.
+    """
     n = len(individuo)
-    for i in range(n):
+    for _ in range(max(1, n // 10)):
         if random.random() < taxa_mutacao:
-            j = random.randrange(n)
-            individuo[i], individuo[j] = individuo[j], individuo[i]
+            i = random.randrange(0, n - 1)
+            k = random.randrange(i + 1, n)
+            novo = two_opt_swap(individuo, i, k)
+            individuo[:] = novo
+            return
 
 
 def avaliar_populacao(populacao: List[List[int]], coords) -> List[float]:
@@ -102,9 +108,9 @@ def genetic_algorithm(
             else:
                 filho1, filho2 = pai1[:], pai2[:]
 
-            # mutação
-            mutacao_swap(filho1, taxa_mutacao)
-            mutacao_swap(filho2, taxa_mutacao)
+            # mutação (2-opt)
+            mutacao_2opt(filho1, taxa_mutacao)
+            mutacao_2opt(filho2, taxa_mutacao)
 
             nova_populacao.append(filho1)
             if len(nova_populacao) < tamanho_populacao:
